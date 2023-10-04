@@ -1,3 +1,17 @@
+## About this fork
+
+* Replaced OpenGL 2.1 with OpenGL ES 2.0
+* in /deps old GLFW was replaced with 3.3.8
+* added fullscreen toggle in game (press F11)
+* added debug info toggle in game (press F10)
+* to increase FPS in Single-board PCs such as Repka Pi 3 changed some settings:
+  - set resolution 800x600
+  - draw distance reduced by 2 times
+* GLEW doesn't need anymore, so it was removed
+* from CMakeLists.txt removed all platforms except Linux
+
+Below is the original README.md
+
 ## Craft
 
 Minecraft clone for Windows, Mac OS X and Linux. Just a few thousand lines of C using modern OpenGL (shaders). Online multiplayer support is included using a Python-based server.
