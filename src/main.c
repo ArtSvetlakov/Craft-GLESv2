@@ -1,5 +1,6 @@
-#include <GL/glew.h>
+#define GLFW_INCLUDE_ES2
 #include <GLFW/glfw3.h>
+//#include <glad/glad.h>
 #include <curl/curl.h>
 #include <math.h>
 #include <stdio.h>
@@ -20,8 +21,8 @@
 #include "util.h"
 #include "world.h"
 
-#define MAX_CHUNKS 8192
-#define MAX_PLAYERS 128
+#define MAX_CHUNKS 12288
+#define MAX_PLAYERS 32
 #define WORKERS 4
 #define MAX_TEXT_LENGTH 256
 #define MAX_NAME_LENGTH 32
@@ -38,6 +39,10 @@
 #define WORKER_IDLE 0
 #define WORKER_BUSY 1
 #define WORKER_DONE 2
+
+_Bool fullScreen=0;
+_Bool showInfoText=0;
+GLFWmonitor *monitor;
 
 typedef struct {
     Map map;
@@ -1742,12 +1747,14 @@ void render_wireframe(Attrib *attrib, Player *player) {
     if (is_obstacle(hw)) {
         glUseProgram(attrib->program);
         glLineWidth(1);
-        glEnable(GL_COLOR_LOGIC_OP);
+		//glEnable(GL_COLOR_LOGIC_OP);
+		glEnable(GL_BLEND);
         glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
         GLuint wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
         draw_lines(attrib, wireframe_buffer, 3, 24);
         del_buffer(wireframe_buffer);
-        glDisable(GL_COLOR_LOGIC_OP);
+		//glDisable(GL_COLOR_LOGIC_OP);
+		glDisable(GL_BLEND);
     }
 }
 
@@ -1756,12 +1763,14 @@ void render_crosshairs(Attrib *attrib) {
     set_matrix_2d(matrix, g->width, g->height);
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
-    glEnable(GL_COLOR_LOGIC_OP);
+    //glEnable(GL_COLOR_LOGIC_OP);
+    glEnable(GL_BLEND);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     GLuint crosshair_buffer = gen_crosshair_buffer();
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
-    glDisable(GL_COLOR_LOGIC_OP);
+    //glDisable(GL_COLOR_LOGIC_OP);
+    glDisable(GL_BLEND);
 }
 
 void render_item(Attrib *attrib) {
@@ -2200,6 +2209,28 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
+    
+    if (key == GLFW_KEY_F11)
+    {
+		if (!fullScreen)
+		{
+			fullScreen=1;
+			 monitor = glfwGetPrimaryMonitor();
+			 glfwSetWindowMonitor(g->window, monitor,0,0,WINDOW_WIDTH,WINDOW_HEIGHT,GLFW_DONT_CARE);
+		}
+		else 
+		{
+			fullScreen=0;
+			monitor = NULL;
+			glfwSetWindowMonitor(g->window, monitor,0,0,WINDOW_WIDTH,WINDOW_HEIGHT,GLFW_DONT_CARE);
+		}
+	}
+	if (key == GLFW_KEY_F10)
+	{
+		if (!showInfoText) showInfoText=1;
+		else showInfoText=0;
+	}
+    
     if (key == GLFW_KEY_ENTER) {
         if (g->typing) {
             if (mods & GLFW_MOD_SHIFT) {
@@ -2363,14 +2394,16 @@ void on_mouse_button(GLFWwindow *window, int button, int action, int mods) {
 void create_window() {
     int window_width = WINDOW_WIDTH;
     int window_height = WINDOW_HEIGHT;
-    GLFWmonitor *monitor = NULL;
-    if (FULLSCREEN) {
-        int mode_count;
-        monitor = glfwGetPrimaryMonitor();
-        const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
-        window_width = modes[mode_count - 1].width;
-        window_height = modes[mode_count - 1].height;
-    }
+    
+    //GLFWmonitor *monitor = NULL;
+    //if (fullScreen) {
+        //int mode_count;
+        
+        //const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
+        //window_width = modes[mode_count - 1].width;
+        //window_height = modes[mode_count - 1].height;
+    //}
+    //else monitor = NULL;
     g->window = glfwCreateWindow(
         window_width, window_height, "Craft", monitor, NULL);
 }
@@ -2593,6 +2626,12 @@ int main(int argc, char **argv) {
     if (!glfwInit()) {
         return -1;
     }
+    
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    
+
     create_window();
     if (!g->window) {
         glfwTerminate();
@@ -2607,13 +2646,14 @@ int main(int argc, char **argv) {
     glfwSetMouseButtonCallback(g->window, on_mouse_button);
     glfwSetScrollCallback(g->window, on_scroll);
 
-    if (glewInit() != GLEW_OK) {
-        return -1;
-    }
+    //if (glewInit() != GLEW_OK) {
+    //    return -1;
+    //}
+    //gladLoadGLES2Loader(glfwGetProcAddress);
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-    glLogicOp(GL_INVERT);
+    //glLogicOp(GL_INVERT);
     glClearColor(0, 0, 0, 1);
 
     // LOAD TEXTURES //
@@ -2773,7 +2813,7 @@ int main(int argc, char **argv) {
 
         // BEGIN MAIN LOOP //
         double previous = glfwGetTime();
-        while (1) {
+        while (!glfwWindowShouldClose(g->window)) {
             // WINDOW SIZE AND SCALE //
             g->scale = get_scale_factor();
             glfwGetFramebufferSize(g->window, &g->width, &g->height);
@@ -2856,14 +2896,14 @@ int main(int argc, char **argv) {
             float ts = 12 * g->scale;
             float tx = ts / 2;
             float ty = g->height - ts;
-            if (SHOW_INFO_TEXT) {
+            if (showInfoText) {
                 int hour = time_of_day() * 24;
                 char am_pm = hour < 12 ? 'a' : 'p';
                 hour = hour % 12;
                 hour = hour ? hour : 12;
                 snprintf(
                     text_buffer, 1024,
-                    "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
+                    "(%d, %d)\n(%.2f, %.2f, %.2f)\n[%d, %d, %d]\n%d%cm\n%dfps",
                     chunked(s->x), chunked(s->z), s->x, s->y, s->z,
                     g->player_count, g->chunk_count,
                     face_count * 2, hour, am_pm, fps.fps);

@@ -1,4 +1,6 @@
-#version 120
+#version 100
+precision mediump float;
+precision highp int;
 
 uniform sampler2D sampler;
 uniform sampler2D sky_sampler;
